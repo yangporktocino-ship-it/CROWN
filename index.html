@@ -603,8 +603,8 @@ footer{max-width:1320px;margin:0 auto;padding:24px 38px 35px;border-top:1px soli
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://unpkg.com/@walletconnect/ethereum-provider@2/dist/index.umd.js"></script>
-<script>
+<script type="module">
+  import { EthereumProvider } from 'https://esm.sh/@walletconnect/ethereum-provider@2';
   // Add your Supabase project values here before deployment.
   const SUPABASE_URL = 'https://mqgqtcfxecgtkgumttjn.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xZ3F0Y2Z4ZWNndGtndW10dGpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4Mzg0NjAsImV4cCI6MjEwNDQxNDQ2MH0.ObjOeV2REEgyYxAJA5F3LRHuGb5vnNJWRNUTY6Xna8g';
@@ -651,7 +651,7 @@ footer{max-width:1320px;margin:0 auto;padding:24px 38px 35px;border-top:1px soli
     walletStatus.className = 'wallet-status';
     try{
       if(!wcProvider){
-        wcProvider = await window.EthereumProvider.init({
+        wcProvider = await EthereumProvider.init({
           projectId: WC_PROJECT_ID,
           chains: [1],
           showQrModal: true,
