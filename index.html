@@ -511,10 +511,9 @@ footer{max-width:1320px;margin:0 auto;padding:24px 38px 35px;border-top:1px soli
     <div class="bottom-wallet">
       <div class="wallet-gate">
         <h3>Connect your wallet to unlock the CROWN quests</h3>
-        <p>Paste your EVM wallet address below. Your social tasks will appear only after a valid wallet is entered.</p>
+        <p>Connect with MetaMask, Trust Wallet, or any WalletConnect-compatible wallet. Your social tasks will appear only after your wallet is connected.</p>
         <div class="wallet-row">
-          <input id="walletInput" type="text" placeholder="0xYourWalletAddress" autocomplete="off" aria-label="Wallet address">
-          <button class="btn wallet-btn" id="unlockBtn" type="button">Unlock Tasks</button>
+          <button class="btn wallet-btn" id="unlockBtn" type="button">🔗 Connect Wallet</button>
         </div>
         <div class="wallet-status" id="walletStatus">Wallet required before tasks can be shown.</div>
       </div>
@@ -549,10 +548,10 @@ footer{max-width:1320px;margin:0 auto;padding:24px 38px 35px;border-top:1px soli
   <div class="quests" id="quests">
     <div class="quest-head"><div><h3>Complete the CROWN quests</h3><p>Finish all four social tasks to qualify for early access.</p></div></div>
     <div class="quest-list">
-      <div class="quest" data-task="follow"><div><div class="quest-title">🐦 Follow CROWN on X</div><div class="quest-meta">Follow @Crownstickman</div></div><button class="task-btn" data-url="https://x.com/intent/user?screen_name=Crownstickman">Follow</button></div>
-      <div class="quest" data-task="like"><div><div class="quest-title">❤️ Like the announcement</div><div class="quest-meta">Open the CROWN post and like it</div></div><button class="task-btn" data-url="https://x.com/search?q=%40Crownstickman&src=typed_query">Like</button></div>
-      <div class="quest" data-task="retweet"><div><div class="quest-title">🔁 Retweet the announcement</div><div class="quest-meta">Share the official CROWN post</div></div><button class="task-btn" data-url="https://x.com/search?q=%40Crownstickman&src=typed_query">Retweet</button></div>
-      <div class="quest" data-task="comment"><div><div class="quest-title">💬 Comment on the post</div><div class="quest-meta">Leave a real comment on the official post</div></div><button class="task-btn" data-url="https://x.com/search?q=%40Crownstickman&src=typed_query">Comment</button></div>
+      <div class="quest" data-task="follow"><div><div class="quest-title">🐦 Follow CROWN on X</div><div class="quest-meta">Follow @Crownstickman_</div></div><button class="task-btn" data-url="https://x.com/intent/user?screen_name=Crownstickman_">Follow</button></div>
+      <div class="quest" data-task="like"><div><div class="quest-title">❤️ Like the announcement</div><div class="quest-meta">Open the CROWN post and like it</div></div><button class="task-btn" data-url="https://x.com/intent/like?tweet_id=2097243003316474100">Like</button></div>
+      <div class="quest" data-task="retweet"><div><div class="quest-title">🔁 Retweet the announcement</div><div class="quest-meta">Share the official CROWN post</div></div><button class="task-btn" data-url="https://x.com/intent/retweet?tweet_id=2097243003316474100">Retweet</button></div>
+      <div class="quest" data-task="comment"><div><div class="quest-title">💬 Comment on the post</div><div class="quest-meta">Leave a real comment on the official post</div></div><button class="task-btn" data-url="https://x.com/Crownstickman_/status/2097243003316474100">Comment</button></div>
     </div>
     <div class="wallet-summary" id="walletSummary">Wallet unlocked: <b id="walletShort"></b></div>
     <div class="quest-success" id="questSuccess">✓ All four tasks completed — you qualify for CROWN early access.</div>
@@ -600,10 +599,11 @@ footer{max-width:1320px;margin:0 auto;padding:24px 38px 35px;border-top:1px soli
 </section>
 
 <footer>
-  © 2026 Crown Collection · <a href="#" onclick="return false;">@Crownstickman</a>
+  © 2026 Crown Collection · <a href="https://x.com/Crownstickman_" target="_blank" rel="noopener">@Crownstickman_</a>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@walletconnect/ethereum-provider@2/dist/index.umd.js"></script>
 <script>
   // Add your Supabase project values here before deployment.
   const SUPABASE_URL = 'https://mqgqtcfxecgtkgumttjn.supabase.co';
@@ -612,7 +612,6 @@ footer{max-width:1320px;margin:0 auto;padding:24px 38px 35px;border-top:1px soli
   const db = supabaseReady ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
   const countNum = document.getElementById('countNum');
-  const walletInput = document.getElementById('walletInput');
   const unlockBtn = document.getElementById('unlockBtn');
   const walletStatus = document.getElementById('walletStatus');
   const quests = document.getElementById('quests');
@@ -623,6 +622,9 @@ footer{max-width:1320px;margin:0 auto;padding:24px 38px 35px;border-top:1px soli
   const joinStatus = document.getElementById('joinStatus');
   const taskState = {follow:false,like:false,retweet:false,comment:false};
   let currentWallet = '';
+  let wcProvider = null;
+
+  const WC_PROJECT_ID = 'e3bc2a29df14b7c11527e569245fcfcc';
 
   function validWallet(v){ return /^0x[a-fA-F0-9]{40}$/.test(v.trim()); }
   function shortWallet(v){ return v.slice(0,6)+'…'+v.slice(-4); }
@@ -643,24 +645,65 @@ footer{max-width:1320px;margin:0 auto;padding:24px 38px 35px;border-top:1px soli
     return !error && !!data;
   }
 
-  unlockBtn.addEventListener('click',async()=>{
-    const wallet=walletInput.value.trim();
-    if(!validWallet(wallet)){
-      walletStatus.textContent='Please paste a valid EVM wallet address (0x + 40 characters).';
-      walletStatus.className='wallet-status err';
-      quests.classList.remove('show');
-      return;
+  async function connectWallet(){
+    unlockBtn.disabled = true;
+    walletStatus.textContent = 'Opening wallet connection…';
+    walletStatus.className = 'wallet-status';
+    try{
+      if(!wcProvider){
+        wcProvider = await window.EthereumProvider.init({
+          projectId: WC_PROJECT_ID,
+          chains: [1],
+          showQrModal: true,
+          metadata: {
+            name: 'CROWN Waitlist',
+            description: 'CROWN 3,333 Edition waitlist',
+            url: window.location.origin,
+            icons: [window.location.origin + '/favicon.ico']
+          }
+        });
+      }
+      await wcProvider.connect();
+      const accounts = wcProvider.accounts;
+      if(!accounts || !accounts.length){
+        throw new Error('No account returned');
+      }
+      const wallet = accounts[0];
+      currentWallet = wallet.toLowerCase();
+      walletStatus.textContent = 'Wallet connected. CROWN quests unlocked.';
+      walletStatus.className = 'wallet-status ok';
+      walletShort.textContent = shortWallet(wallet);
+      walletSummary.classList.add('show');
+      quests.classList.add('show');
+      joinSpot.classList.remove('show');
+      unlockBtn.textContent = '✓ Wallet Connected';
+      await loadCount();
+      document.getElementById('quests').scrollIntoView({behavior:'smooth',block:'center'});
+
+      wcProvider.on('accountsChanged',(accts)=>{
+        if(accts && accts.length){
+          currentWallet = accts[0].toLowerCase();
+          walletShort.textContent = shortWallet(accts[0]);
+        }
+      });
+      wcProvider.on('disconnect',()=>{
+        currentWallet = '';
+        unlockBtn.disabled = false;
+        unlockBtn.textContent = '🔗 Connect Wallet';
+        walletStatus.textContent = 'Wallet disconnected. Please reconnect.';
+        walletStatus.className = 'wallet-status err';
+        walletSummary.classList.remove('show');
+        quests.classList.remove('show');
+      });
+    }catch(err){
+      console.error(err);
+      walletStatus.textContent = 'Wallet connection failed or was cancelled. Please try again.';
+      walletStatus.className = 'wallet-status err';
+      unlockBtn.disabled = false;
     }
-    currentWallet=wallet.toLowerCase();
-    walletStatus.textContent='Wallet verified locally. CROWN quests unlocked.';
-    walletStatus.className='wallet-status ok';
-    walletShort.textContent=shortWallet(wallet);
-    walletSummary.classList.add('show');
-    quests.classList.add('show');
-    joinSpot.classList.remove('show');
-    await loadCount();
-    document.getElementById('quests').scrollIntoView({behavior:'smooth',block:'center'});
-  });
+  }
+
+  unlockBtn.addEventListener('click', connectWallet);
 
   document.querySelectorAll('.task-btn[data-url]').forEach(btn=>{
     btn.addEventListener('click',()=>{
