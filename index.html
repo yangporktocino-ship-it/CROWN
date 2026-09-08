@@ -645,11 +645,52 @@ footer{max-width:1320px;margin:0 auto;padding:24px 38px 35px;border-top:1px soli
     return !error && !!data;
   }
 
+  function finishConnect(wallet){
+    currentWallet = wallet.toLowerCase();
+    walletStatus.textContent = 'Wallet connected. CROWN quests unlocked.';
+    walletStatus.className = 'wallet-status ok';
+    walletShort.textContent = shortWallet(wallet);
+    walletSummary.classList.add('show');
+    quests.classList.add('show');
+    joinSpot.classList.remove('show');
+    unlockBtn.textContent = '✓ Wallet Connected';
+    loadCount();
+    document.getElementById('quests').scrollIntoView({behavior:'smooth',block:'center'});
+  }
+
+  function resetWalletUI(){
+    currentWallet = '';
+    unlockBtn.disabled = false;
+    unlockBtn.textContent = '🔗 Connect Wallet';
+    walletStatus.textContent = 'Wallet disconnected. Please reconnect.';
+    walletStatus.className = 'wallet-status err';
+    walletSummary.classList.remove('show');
+    quests.classList.remove('show');
+  }
+
   async function connectWallet(){
     unlockBtn.disabled = true;
     walletStatus.textContent = 'Opening wallet connection…';
     walletStatus.className = 'wallet-status';
     try{
+      // 1) If a browser extension wallet (MetaMask, Coinbase Wallet, etc.) is installed, use it directly.
+      if(window.ethereum){
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        if(!accounts || !accounts.length) throw new Error('No account returned');
+        finishConnect(accounts[0]);
+
+        window.ethereum.on && window.ethereum.on('accountsChanged',(accts)=>{
+          if(accts && accts.length){
+            currentWallet = accts[0].toLowerCase();
+            walletShort.textContent = shortWallet(accts[0]);
+          } else {
+            resetWalletUI();
+          }
+        });
+        return;
+      }
+
+      // 2) No browser extension detected — fall back to WalletConnect (QR for mobile wallets).
       if(!wcProvider){
         wcProvider = await EthereumProvider.init({
           projectId: WC_PROJECT_ID,
@@ -668,17 +709,7 @@ footer{max-width:1320px;margin:0 auto;padding:24px 38px 35px;border-top:1px soli
       if(!accounts || !accounts.length){
         throw new Error('No account returned');
       }
-      const wallet = accounts[0];
-      currentWallet = wallet.toLowerCase();
-      walletStatus.textContent = 'Wallet connected. CROWN quests unlocked.';
-      walletStatus.className = 'wallet-status ok';
-      walletShort.textContent = shortWallet(wallet);
-      walletSummary.classList.add('show');
-      quests.classList.add('show');
-      joinSpot.classList.remove('show');
-      unlockBtn.textContent = '✓ Wallet Connected';
-      await loadCount();
-      document.getElementById('quests').scrollIntoView({behavior:'smooth',block:'center'});
+      finishConnect(accounts[0]);
 
       wcProvider.on('accountsChanged',(accts)=>{
         if(accts && accts.length){
@@ -686,15 +717,7 @@ footer{max-width:1320px;margin:0 auto;padding:24px 38px 35px;border-top:1px soli
           walletShort.textContent = shortWallet(accts[0]);
         }
       });
-      wcProvider.on('disconnect',()=>{
-        currentWallet = '';
-        unlockBtn.disabled = false;
-        unlockBtn.textContent = '🔗 Connect Wallet';
-        walletStatus.textContent = 'Wallet disconnected. Please reconnect.';
-        walletStatus.className = 'wallet-status err';
-        walletSummary.classList.remove('show');
-        quests.classList.remove('show');
-      });
+      wcProvider.on('disconnect', resetWalletUI);
     }catch(err){
       console.error(err);
       walletStatus.textContent = 'Wallet connection failed or was cancelled. Please try again.';
